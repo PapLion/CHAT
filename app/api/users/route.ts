@@ -10,7 +10,7 @@ export async function GET(req: Request) {
     }
 
     const db = await openDb()
-    const users = await db.all("SELECT id, email, name, role, is_banned, is_muted FROM users")
+    const users = await db.all("SELECT id, email, name, role FROM users")
 
     return NextResponse.json(users)
   } catch (error) {

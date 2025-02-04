@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -9,39 +9,13 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-interface Course {
-  id: number
-  name: string
-  parallel: string
-  year: string
-  specialization: string
-}
-
 export default function Register() {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [role, setRole] = useState("student")
-  const [courseId, setCourseId] = useState("")
-  const [courses, setCourses] = useState<Course[]>([])
   const router = useRouter()
   const { toast } = useToast()
-
-  useEffect(() => {
-    fetchCourses()
-  }, [])
-
-  const fetchCourses = async () => {
-    try {
-      const res = await fetch("/api/courses")
-      if (res.ok) {
-        const data = await res.json()
-        setCourses(data)
-      }
-    } catch (error) {
-      console.error("Error fetching courses:", error)
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,7 +24,7 @@ export default function Register() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, role, courseId }),
+        body: JSON.stringify({ name, email, password, role }),
       })
 
       const data = await res.json()
@@ -58,7 +32,7 @@ export default function Register() {
       if (res.ok) {
         toast({
           title: "Registro exitoso",
-          description: data.message,
+          description: "Por favor, inicia sesión",
         })
         router.push("/login")
       } else {
@@ -121,29 +95,6 @@ export default function Register() {
               </SelectContent>
             </Select>
           </div>
-          {(role === "student" || role === "parent") && (
-            <div className="space-y-2">
-              <Label htmlFor="course">Curso</Label>
-              <Select value={courseId} onValueChange={setCourseId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona un curso" />
-                </SelectTrigger>
-                <SelectContent>
-                  {courses.map((course) => (
-                    <SelectItem key={course.id} value={course.id.toString()}>
-                      {`${course.name} ${course.parallel} - ${course.specialization}`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          {role === "parent" && (
-            <p className="text-sm text-muted-foreground">
-              Si tiene más de un hijo, por favor contacte a soporte después de registrarse para obtener acceso a los
-              chats adicionales.
-            </p>
-          )}
           <Button type="submit" className="w-full">
             Registrarse
           </Button>
