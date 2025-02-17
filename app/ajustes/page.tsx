@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Settings, MessageSquare } from "lucide-react"
+import { Navigation } from "@/components/Navigation"
 
 export default function Ajustes() {
   const [chatAbierto, setChatAbierto] = useState(true)
@@ -18,7 +21,6 @@ export default function Ajustes() {
       return
     }
 
-    // Cargar el estado actual del chat
     fetchChatStatus()
   }, [router])
 
@@ -73,13 +75,59 @@ export default function Ajustes() {
   }
 
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-6">Ajustes</h1>
-      <div className="flex items-center space-x-2">
-        <Switch id="chat-status" checked={chatAbierto} onCheckedChange={toggleChatStatus} />
-        <Label htmlFor="chat-status">{chatAbierto ? "Chat abierto" : "Chat cerrado"}</Label>
+    <>
+      <Navigation />
+      <div className="container mx-auto p-6">
+        <div className="max-w-2xl mx-auto space-y-6">
+          <div className="flex items-center space-x-2">
+            <Settings className="w-6 h-6 text-primary" />
+            <h1 className="text-2xl font-bold">Ajustes del Sistema</h1>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <MessageSquare className="w-5 h-5" />
+                <span>Control del Chat</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div className="space-y-0.5">
+                  <Label htmlFor="chat-status" className="text-base">
+                    Estado del Chat
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    {chatAbierto
+                      ? "El chat está abierto para todos los usuarios"
+                      : "El chat está cerrado para todos los usuarios"}
+                  </p>
+                </div>
+                <Switch id="chat-status" checked={chatAbierto} onCheckedChange={toggleChatStatus} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Información del Sistema</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-medium mb-2">Institución</h3>
+                  <p className="text-sm text-muted-foreground">Unidad Educativa Fiscal Eloy Alfaro</p>
+                </div>
+                <div>
+                  <h3 className="font-medium mb-2">Versión del Sistema</h3>
+                  <p className="text-sm text-muted-foreground">1.0.0</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 

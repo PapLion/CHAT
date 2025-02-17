@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/use-toast"
-import Link from "next/link"
+import { Navigation } from "@/components/Navigation"
 
 interface Message {
   id: number
   content: string
   sender_name: string
+  sender_id: number
   created_at: string
 }
 
@@ -20,6 +21,7 @@ export default function Chat() {
   const [chatAbierto, setChatAbierto] = useState(true)
   const router = useRouter()
   const { toast } = useToast()
+  const userId = typeof window !== "undefined" ? localStorage.getItem("userId") : null
 
   useEffect(() => {
     const token = localStorage.getItem("token")
@@ -34,7 +36,9 @@ export default function Chat() {
       fetchMessages()
       fetchChatStatus()
     }, 5000)
-    return () => clearInterval(interval)
+    return () => {
+      clearInterval(interval)
+    }
   }, [router])
 
   const fetchMessages = async () => {
@@ -103,53 +107,47 @@ export default function Chat() {
     }
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem("token")
-    localStorage.removeItem("userId")
-    localStorage.removeItem("userRole")
-    router.push("/login")
-  }
-
   return (
-    <div className="flex flex-col h-screen">
-      <header className="bg-primary text-primary-foreground p-4 flex justify-between items-center">
-        <h1 className="text-xl font-bold">Chat Educativo</h1>
-        <div className="flex items-center space-x-4">
-          {localStorage.getItem("userRole") === "authority" && (
-            <Link href="/ajustes" className="text-primary-foreground hover:underline">
-              Ajustes
-            </Link>
+    <>
+      <Navigation />
+      <div className="container mx-auto p-4 max-w-4xl">
+        <main className="flex-1 overflow-y-auto space-y-4 mb-4 min-h-[calc(100vh-200px)]">
+          {messages.map((message) => {
+            const isOwnMessage = message.sender_id === Number(userId)
+            return (
+              <div key={message.id} className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}>
+                <div
+                  className={`max-w-[80%] rounded-lg p-3 ${
+                    isOwnMessage
+                      ? "bg-primary text-primary-foreground ml-auto"
+                      : "bg-secondary text-secondary-foreground"
+                  }`}
+                >
+                  <p className="font-semibold text-sm">{message.sender_name}</p>
+                  <p className="break-words">{message.content}</p>
+                  <p className="text-xs opacity-70 mt-1">{new Date(message.created_at).toLocaleString()}</p>
+                </div>
+              </div>
+            )
+          })}
+        </main>
+        <footer className="border-t pt-4 bg-background rounded-lg p-4">
+          {chatAbierto ? (
+            <form onSubmit={sendMessage} className="flex gap-2">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Escribe un mensaje..."
+                className="flex-1"
+              />
+              <Button type="submit">Enviar</Button>
+            </form>
+          ) : (
+            <p className="text-center text-muted-foreground">El chat está cerrado actualmente.</p>
           )}
-          <Button onClick={handleLogout} variant="secondary">
-            Cerrar Sesión
-          </Button>
-        </div>
-      </header>
-      <main className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <div key={message.id} className="bg-secondary p-3 rounded-lg">
-            <p className="font-semibold">{message.sender_name}</p>
-            <p>{message.content}</p>
-            <p className="text-xs text-muted-foreground">{new Date(message.created_at).toLocaleString()}</p>
-          </div>
-        ))}
-      </main>
-      <footer className="p-4 border-t">
-        {chatAbierto ? (
-          <form onSubmit={sendMessage} className="flex gap-2">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Escribe un mensaje..."
-              className="flex-1"
-            />
-            <Button type="submit">Enviar</Button>
-          </form>
-        ) : (
-          <p className="text-center text-muted-foreground">El chat está cerrado actualmente.</p>
-        )}
-      </footer>
-    </div>
+        </footer>
+      </div>
+    </>
   )
 }
 
