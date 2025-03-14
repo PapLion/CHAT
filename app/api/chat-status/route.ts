@@ -1,39 +1,55 @@
-import { NextResponse } from "next/server"
-import { openDb } from "@/lib/db"
-import { auth } from "@/lib/auth"
+import { type NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import { connectToDatabase } from "@/lib/db"
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const user = await auth(req)
-    if (!user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+    const session = await getServerSession(authOptions)
+
+    if (!session || !session.user) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
     }
 
-    const db = await openDb()
-    const result = await db.get("SELECT value FROM settings WHERE key = 'chat_open'")
-    const chatAbierto = result?.value === "true"
+    const { db } = await connectToDatabase()
 
-    return NextResponse.json({ chatAbierto })
+    // Obtener el estado de los chats del usuario
+    const chatStatus = await db.collection("chatStatus").findOne({
+      userId: session.user.id,
+    })
+
+    return NextResponse.json({ status: chatStatus || { userId: session.user.id, status: "online" } })
   } catch (error) {
-    return NextResponse.json({ error: "Error al obtener el estado del chat" }, { status: 500 })
+    console.error("Error fetching chat status:", error)
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 })
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const user = await auth(req)
-    if (!user || user.role !== "authority") {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+    const session = await getServerSession(authOptions)
+
+    if (!session || !session.user) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
     }
 
-    const { chatAbierto } = await req.json()
-    const db = await openDb()
+    const { status } = await req.json()
 
-    await db.run("UPDATE settings SET value = ? WHERE key = 'chat_open'", [chatAbierto ? "true" : "false"])
+    if (!status || !["online", "away", "busy", "offline"].includes(status)) {
+      return NextResponse.json({ message: "Invalid status" }, { status: 400 })
+    }
 
-    return NextResponse.json({ success: true })
+    const { db } = await connectToDatabase()
+
+    // Actualizar el estado del chat del usuario
+    await db
+      .collection("chatStatus")
+      .updateOne({ userId: session.user.id }, { $set: { status, updatedAt: new Date() } }, { upsert: true })
+
+    return NextResponse.json({ message: "Status updated successfully" })
   } catch (error) {
-    return NextResponse.json({ error: "Error al actualizar el estado del chat" }, { status: 500 })
+    console.error("Error updating chat status:", error)
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 })
   }
 }
 

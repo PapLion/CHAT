@@ -1,42 +1,27 @@
-import sqlite3 from "sqlite3"
-import { open } from "sqlite"
+import { MongoClient, type Db } from "mongodb"
 
-let db: any = null
+let cachedClient: MongoClient | null = null
+let cachedDb: Db | null = null
 
-async function openDb() {
-  if (!db) {
-    db = await open({
-      filename: "./chat.db",
-      driver: sqlite3.Database,
-    })
-
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT UNIQUE,
-        password TEXT,
-        name TEXT,
-        role TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        sender_id INTEGER,
-        content TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (sender_id) REFERENCES users(id)
-      );
-
-      CREATE TABLE IF NOT EXISTS settings (
-        key TEXT PRIMARY KEY,
-        value TEXT
-      );
-      INSERT OR IGNORE INTO settings (key, value) VALUES ('chat_open', 'true');
-    `)
+export async function connectToDatabase() {
+  if (cachedClient && cachedDb) {
+    return { client: cachedClient, db: cachedDb }
   }
-  return db
-}
 
-export { openDb }
+  const uri = process.env.MONGODB_URI
+
+  if (!uri) {
+    throw new Error("Please define the MONGODB_URI environment variable")
+  }
+
+  const client = new MongoClient(uri)
+  await client.connect()
+
+  const db = client.db(process.env.MONGODB_DB || "aulatest")
+
+  cachedClient = client
+  cachedDb = db
+
+  return { client, db }
+}
 

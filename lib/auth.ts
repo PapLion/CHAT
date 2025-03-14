@@ -1,24 +1,68 @@
-import type { NextRequest } from "next/server"
-import jwt from "jsonwebtoken"
-import type { User } from "./types"
+import type { NextAuthOptions } from "next-auth"
+import CredentialsProvider from "next-auth/providers/credentials"
+import { connectToDatabase } from "@/lib/db"
+import { compare } from "bcryptjs"
 
-export async function auth(req: NextRequest): Promise<User | null> {
-  const token = req.headers.get("authorization")?.split(" ")[1]
+export const authOptions: NextAuthOptions = {
+  providers: [
+    CredentialsProvider({
+      name: "Credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          return null
+        }
 
-  if (!token) {
-    return null
-  }
+        try {
+          const { db } = await connectToDatabase()
+          const user = await db.collection("users").findOne({ email: credentials.email })
 
-  try {
-    return jwt.verify(token, process.env.JWT_SECRET || "secret") as User
-  } catch (error) {
-    return null
-  }
-}
+          if (!user) {
+            return null
+          }
 
-export function logout() {
-  localStorage.removeItem("token")
-  localStorage.removeItem("userId")
-  localStorage.removeItem("userRole")
+          const isPasswordValid = await compare(credentials.password, user.password)
+
+          if (!isPasswordValid) {
+            return null
+          }
+
+          return {
+            id: user._id.toString(),
+            name: user.name,
+            email: user.email,
+            image: user.image || null,
+          }
+        } catch (error) {
+          console.error("Auth error:", error)
+          return null
+        }
+      },
+    }),
+  ],
+  session: {
+    strategy: "jwt",
+  },
+  pages: {
+    signIn: "/login",
+  },
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id
+      }
+      return token
+    },
+    async session({ session, token }) {
+      if (token && session.user) {
+        session.user.id = token.id as string
+      }
+      return session
+    },
+  },
+  secret: process.env.NEXTAUTH_SECRET,
 }
 
